@@ -6,18 +6,17 @@ from nervaluate import Evaluator
 from tqdm import tqdm
 
 
-
 def parse_input_data(path):
-    """ Proces input data in predefined format to list of dicts format
+    """Proces input data in predefined format to list of dicts format
 
     Args:
         path: path to text file with input data with predifined format
 
     Returns:
-        list of dicts with keys: 
+        list of dicts with keys:
            "id" - identification number of paper
            "text" - merged title and abstract
-           "entities" - list of recognized entities 
+           "entities" - list of recognized entities
     """
     with open(path, "r") as f:
         lines = f.readlines()
@@ -57,7 +56,7 @@ def parse_input_data(path):
 
 
 def predict_ner(tagger, data):
-    """Recognize entities for data in list of dicts format 
+    """Recognize entities for data in list of dicts format
 
     Args:
         tagger : Model from flair framework used to NEr recognition
@@ -89,12 +88,12 @@ def get_iob_annotation(text):
 
     Returns:
         annotations in IOB format (list of tags for each token)
-    """    
-    text_processed  = Sentence(text['text'])
+    """
+    text_processed = Sentence(text["text"])
 
-    text['entities'].sort(key=lambda ent: ent[0])
+    text["entities"].sort(key=lambda ent: ent[0])
 
-    entity_iterator = iter(text['entities'])
+    entity_iterator = iter(text["entities"])
     current_entity = next(entity_iterator, None)
     iob_annotations = []
     for token in text_processed:
@@ -104,28 +103,28 @@ def get_iob_annotation(text):
                 if current_entity is None:
                     break
         if current_entity is not None:
-            # Entity starts after token 
+            # Entity starts after token
             if token.start_position < int(current_entity[0]):
-                iob_annotations.append('O')
+                iob_annotations.append("O")
                 continue
             # Start of entity and token aligned
             elif token.start_position == int(current_entity[0]):
-                iob_annotations.append('B-Disease')
-                
+                iob_annotations.append("B-Disease")
+
                 # One token entity
                 if token.end_position >= int(current_entity[1]):
                     current_entity = next(entity_iterator, None)
-                    
-            # Entity started before token 
+
+            # Entity started before token
             else:
-                iob_annotations.append('I-Disease')
-                
+                iob_annotations.append("I-Disease")
+
                 # Last token of entity
                 if token.end_position == int(current_entity[1]):
                     current_entity = next(entity_iterator, None)
         else:
-            iob_annotations.append('O')
-            
+            iob_annotations.append("O")
+
     return iob_annotations
 
 
@@ -138,15 +137,18 @@ def eval_iob_predictions(predictions_data, gt_data):
 
     """
     gt_annotations = [get_iob_annotation(gt) for gt in gt_data]
-    predicted_annotations = [get_iob_annotation(prediction) for prediction in predictions_data]
-    evaluator = Evaluator(gt_annotations,
-                          predicted_annotations,
-                          tags=['Disease'],
-                          loader="list")
-    
-    results, results_per_tag, result_indices, result_indices_by_tag = evaluator.evaluate()
-    print('Results of evaluation ')
-    print(results['ent_type'])
+    predicted_annotations = [
+        get_iob_annotation(prediction) for prediction in predictions_data
+    ]
+    evaluator = Evaluator(
+        gt_annotations, predicted_annotations, tags=["Disease"], loader="list"
+    )
+
+    results, results_per_tag, result_indices, result_indices_by_tag = (
+        evaluator.evaluate()
+    )
+    print("Results of evaluation:")
+    print(results["ent_type"])
 
 
 def save_predictions(data, output_path):
@@ -156,9 +158,8 @@ def save_predictions(data, output_path):
         data : list of dicts format
         output_path : path to output json file
     """
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         f.write(json.dumps(data))
-
 
 
 if __name__ == "__main__":
@@ -167,11 +168,17 @@ if __name__ == "__main__":
         prog="Disease Entity Recognition (DER)",
         description="Recognize Disease Entities in text in provided format",
     )
-    parser.add_argument('--input_path', required=True,  type=str, help='path to input file')
-    parser.add_argument('--output', default='output.json',  type=str, help='output file name. Default: output.json')
+    parser.add_argument(
+        "--input_path", required=True, type=str, help="path to input file"
+    )
+    parser.add_argument(
+        "--output",
+        default="output.json",
+        type=str,
+        help="output file name. Default: output.json",
+    )
     args = parser.parse_args()
 
-    
     # Params
     data_path = args.input_path
 
@@ -179,14 +186,9 @@ if __name__ == "__main__":
     parsed_data = parse_input_data(data_path)
     # Loading ner model
     ner_tagger = Classifier.load("hunflair2")
-    # Entity reconition 
+    # Entity reconition
     ner_predictions = predict_ner(ner_tagger, parsed_data)
     # Saving predictions
     save_predictions(ner_predictions, args.output)
     # Evaluate predictions
     eval_iob_predictions(ner_predictions, parsed_data)
-
-
-
-
-
