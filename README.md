@@ -2,7 +2,7 @@
 
 ### Instalation
 ```
-conda env create -f ner310.yml
+conda env create -f ner310.yaml
 conda activate ner310  
 ```
 ### Usage: 
